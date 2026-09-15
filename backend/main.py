@@ -1,51 +1,144 @@
 import os
+
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from openai import OpenAI
+from google import genai
+
+
+# ============================================================
+# CONFIGURAÇÃO
+# ============================================================
 
 load_dotenv()
 
-app = FastAPI(title="Chatbot com IA")
+app = FastAPI(
+    title="Chatbot IA",
+    description="API de chatbot utilizando FastAPI + Gemini",
+    version="1.0.0"
+)
+
+
+# ============================================================
+# CORS - PERMITE COMUNICAÇÃO COM O REACT
+# ============================================================
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class ChatRequest(BaseModel):
+
+# ============================================================
+# CONFIGURAÇÃO DA API GEMINI
+# ============================================================
+
+api_key = os.getenv("GEMINI_API_KEY")
+
+if not api_key:
+    raise RuntimeError(
+        "GEMINI_API_KEY não encontrada. "
+        "Verifique se o arquivo .env está dentro da pasta backend."
+    )
+
+client = genai.Client(api_key=api_key)
+
+
+# ============================================================
+# MODELOS DE DADOS
+# ============================================================
+
+class MensagemRequest(BaseModel):
     mensagem: str
 
-class ChatResponse(BaseModel):
+
+class MensagemResponse(BaseModel):
     resposta: str
 
+
+# ============================================================
+# ROTA DE TESTE
+# ============================================================
+
 @app.get("/")
-def home():
-    return {"status": "API do Chatbot funcionando"}
+def inicio():
+    return {
+        "status": "online",
+        "mensagem": "API do Chatbot funcionando!"
+    }
 
-@app.post("/chat", response_model=ChatResponse)
-def chat(dados: ChatRequest):
+
+# ============================================================
+# ROTA DO CHAT
+# ============================================================
+
+@app.post("/chat", response_model=MensagemResponse)
+def chat(dados: MensagemRequest):
+
     mensagem = dados.mensagem.strip()
-    if not mensagem:
-        raise HTTPException(status_code=400, detail="Digite uma mensagem.")
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
+    if not mensagem:
         raise HTTPException(
-            status_code=500,
-            detail="OPENAI_API_KEY não configurada no arquivo .env.",
+            status_code=400,
+            detail="Digite uma mensagem."
         )
 
     try:
-        client = OpenAI(api_key=api_key)
-        response = client.responses.create(
-            model="gpt-5-mini",
-            input=mensagem,
+
+        resposta = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=mensagem
         )
-        return ChatResponse(resposta=response.output_text)
+
+        if not resposta.text:
+            raise HTTPException(
+                status_code=500,
+                detail="A Inteligência Artificial não retornou uma resposta."
+            )
+
+        return MensagemResponse(
+            resposta=resposta.text
+        )
+
+    except HTTPException:
+        raise
+
     except Exception as erro:
-        raise HTTPException(status_code=500, detail="Não foi possível obter uma resposta da IA no momento. Tente novamente.")
+
+        # Mostra o erro verdadeiro no terminal
+        print("\n")
+        print("==========================================")
+        print("ERRO AO CONSULTAR GEMINI")
+        print("==========================================")
+        print(repr(erro))
+        print("==========================================")
+        print("\n")
+
+        # Temporariamente mostra o erro também no frontend
+        # para conseguirmos descobrir o problema.
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao consultar a IA: {str(erro)}"
+        )
+
+
+# ============================================================
+# EXECUÇÃO DIRETA
+# ============================================================
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )

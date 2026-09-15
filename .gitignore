@@ -1,19 +1,62 @@
-# Python
+# ========================================
+# PYTHON / FASTAPI
+# ========================================
+
 backend/venv/
 backend/.venv/
+venv/
+.venv/
+
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
-# Chaves/API
-backend/.env
+# ========================================
+# VARIÁVEIS DE AMBIENTE / CHAVES DE API
+# ========================================
+
 .env
+.env.*
+backend/.env
+backend/.env.*
 
-# React / Node
+# Permite subir os arquivos de exemplo
+!.env.example
+!backend/.env.example
+
+# ========================================
+# REACT / NODE
+# ========================================
+
 frontend/node_modules/
 frontend/dist/
 
-# IDE / SO
+node_modules/
+dist/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========================================
+# IDE
+# ========================================
+
 .vscode/
 .idea/
+
+# ========================================
+# SISTEMA OPERACIONAL
+# ========================================
+
 .DS_Store
 Thumbs.db
+
+# ========================================
+# ARQUIVOS TEMPORÁRIOS
+# ========================================
+
+*.log
+*.tmp
+*.temp
